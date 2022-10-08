@@ -84,14 +84,3 @@ fn main() {
 fn print_error(message: impl std::fmt::Display) {
     eprintln!("{}", message);
 }
-
-fn find_last(str: impl std::fmt::Display, c: char) -> Option<usize> {
-    let str = str.to_string();
-    let len = str.len();
-    for (i, _c) in str.chars().rev().enumerate() {
-        if c == _c {
-            return Some(len - i);
-        }
-    }
-    None
-}
