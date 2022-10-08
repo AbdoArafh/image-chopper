@@ -8,6 +8,10 @@ struct Args {
     /// path of the file to chop
     file_path: path::PathBuf,
 
+    /// main output folder
+    #[arg(short, long)]
+    output_folder: Option<path::PathBuf>,
+
     /// number of horizontal slices
     x_slices: u8,
 
@@ -41,28 +45,25 @@ fn main() {
             let subimg = imageops::crop(&mut image, i * slice_w, j * slice_h, slice_w, slice_h);
 
             let file_path = args.file_path.to_string_lossy();
-            let output_path = format!(
-                "output/{}",
-                &file_path[file_path.find("/").unwrap_or(0)
-                    ..file_path.find(".").unwrap_or(file_path.len())]
+            let mut output_folder = match args.output_folder {
+                Some(ref path) => path.to_owned(),
+                None => path::PathBuf::from("output/"),
+            };
+            output_folder.push(
+                &file_path[find_last(&file_path, '/').unwrap_or(0)
+                    ..file_path.find(".").unwrap_or(file_path.len())],
             );
-            fs::create_dir_all(&output_path).unwrap();
+            fs::create_dir_all(&output_folder).unwrap();
 
             let file_extension = &file_path[file_path.find(".").unwrap_or(0) + 1..];
 
-            subimg
-                .to_image()
-                .save(format!(
-                    "{}/{},{}.{}",
-                    &output_path,
-                    i + 1,
-                    j + 1,
-                    file_extension
-                ))
-                .unwrap_or_else(|_err| {
-                    print_error(format!("Error saving chunk {}, {}", i, j));
-                    process::exit(1);
-                });
+            let mut output_path = output_folder;
+            output_path.push(format!("{},{}.{}", i + 1, j + 1, file_extension));
+
+            subimg.to_image().save(&output_path).unwrap_or_else(|_err| {
+                print_error(format!("Error saving chunk {}, {}", i, j));
+                process::exit(1);
+            });
 
             inc_progress_bar();
         }
@@ -74,4 +75,14 @@ fn main() {
 
 fn print_error(message: impl std::fmt::Display) {
     eprintln!("{}", message);
+}
+
+fn find_last(str: &str, c: char) -> Option<usize> {
+    let len = str.len();
+    for (i, _c) in str.chars().rev().enumerate() {
+        if c == _c {
+            return Some(len - i);
+        }
+    }
+    None
 }
